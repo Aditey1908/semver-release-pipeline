@@ -1,0 +1,163 @@
+# Deploys an already-released version. Called by release.yml for every new
+# release, and run manually (Actions → Deploy → Run workflow) to redeploy or
+# roll back to any earlier version. Nothing is rebuilt: the exact image that
+# was tested is promoted from environment to environment.
+name: Deploy
+run-name: Deploy v${{ inputs.version }} to ${{ inputs.environment }}
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: Released version to deploy, without the "v"
+        required: true
+        type: string
+      environment:
+        description: staging or production
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version to deploy without the "v" (e.g. 1.4.2) — choose an older one to roll back
+        required: true
+        type: string
+      environment:
+        description: Target environment
+        required: true
+        type: choice
+        options: [production, staging]
+        default: production
+
+permissions:
+  contents: read
+  packages: read
+
+env:
+  NODE_VERSION: 24
+
+jobs:
+  deploy:
+    name: Deploy v${{ inputs.version }} → ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ inputs.environment }}
+      url: ${{ inputs.environment == 'production' && vars.PRODUCTION_URL || '' }}
+    concurrency:
+      group: deploy-${{ inputs.environment }}
+      cancel-in-progress: false
+    env:
+      VERSION: ${{ inputs.version }}
+      TARGET: ${{ inputs.environment }}
+      # Optional production target (see docs/SETUP.md). Without it, production = GitHub Pages only.
+      RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+      PRODUCTION_URL: ${{ vars.PRODUCTION_URL }}
+    steps:
+      - name: Validate requested version
+        run: |
+          if ! [[ "$VERSION" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-[0-9A-Za-z.-]+)?$ ]]; then
+            echo "::error::'$VERSION' is not a semantic version (expected e.g. 1.4.2, without the v)"
+            exit 1
+          fi
+          echo "IMAGE=ghcr.io/${GITHUB_REPOSITORY,,}:$VERSION" >> "$GITHUB_ENV"
+
+      - name: Check out the release tag
+        uses: actions/checkout@v7
+        with:
+          ref: v${{ inputs.version }}
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Confirm the release image exists
+        run: docker buildx imagetools inspect "$IMAGE"
+
+      # ---------------- staging: ephemeral environment on the runner ----------------
+      - name: Deploy to staging with Docker Compose
+        if: inputs.environment == 'staging'
+        env:
+          APP_ENV: staging
+        run: |
+          docker compose pull
+          docker compose up -d --no-build --wait --wait-timeout 90
+          docker compose ps
+
+      - name: Smoke test staging
+        if: inputs.environment == 'staging'
+        run: node scripts/smoke-test.js http://localhost:3000 --expect-version "$VERSION"
+
+      - name: Staging logs and teardown
+        if: always() && inputs.environment == 'staging'
+        run: |
+          docker compose logs --no-color || true
+          docker compose down || true
+
+      # ---------------- production: Render (container) ----------------
+      - name: Deploy image to Render
+        if: inputs.environment == 'production' && env.RENDER_DEPLOY_HOOK_URL != ''
+        run: |
+          IMG_URL=$(node -p 'encodeURIComponent(process.argv[1])' "$IMAGE")
+          curl --fail-with-body --silent --show-error -X POST "${RENDER_DEPLOY_HOOK_URL}&imgURL=${IMG_URL}"
+          echo
+          echo "Render deployment of $IMAGE triggered"
+
+      - name: Verify production is serving v${{ inputs.version }}
+        if: inputs.environment == 'production' && env.PRODUCTION_URL != ''
+        # Render free instances can take a few minutes to roll out / wake up
+        run: node scripts/smoke-test.js "$PRODUCTION_URL" --expect-version "$VERSION" --retries 40 --interval 15
+
+      - name: Production container target not configured
+        if: inputs.environment == 'production' && env.RENDER_DEPLOY_HOOK_URL == ''
+        run: |
+          echo "::notice::RENDER_DEPLOY_HOOK_URL is not set, so the container was not deployed to Render. The image is published to GHCR and the dashboard to GitHub Pages (if enabled). See docs/SETUP.md."
+
+      - name: Summary
+        run: |
+          {
+            echo "### ✅ v$VERSION deployed to $TARGET"
+            echo ""
+            echo "- Image: \`$IMAGE\`"
+            [ -n "$PRODUCTION_URL" ] && [ "$TARGET" = "production" ] && echo "- URL: $PRODUCTION_URL"
+            true
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  pages:
+    name: Release dashboard → GitHub Pages
+    needs: deploy
+    if: inputs.environment == 'production' && vars.DEPLOY_PAGES == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.pages.outputs.page_url }}
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: v${{ inputs.version }}
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      - name: Build the dashboard for v${{ inputs.version }}
+        env:
+          APP_VERSION: ${{ inputs.version }}
+          SOURCE_URL: ${{ github.server_url }}/${{ github.repository }}
+        run: npm run build
+      - uses: actions/configure-pages@v6
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: dist
+      - id: pages
+        uses: actions/deploy-pages@v5
