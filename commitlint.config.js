@@ -5,8 +5,12 @@
  */
 export default {
   extends: ['@commitlint/config-conventional'],
-  // Release commits are written by semantic-release and contain long generated notes
-  ignores: [(message) => message.startsWith('chore(release):')],
+  ignores: [
+    // Release commits are written by semantic-release and contain long generated notes
+    (message) => message.startsWith('chore(release):'),
+    // Dependabot capitalises its subjects ("fix(deps): Bump express from 5.2.1 to 5.3.0")
+    (message) => /^\w+\(deps(-dev)?\): Bump /.test(message),
+  ],
   rules: {
     // Bodies often contain URLs or Dependabot tables; warn instead of failing
     'body-max-line-length': [1, 'always', 100],
