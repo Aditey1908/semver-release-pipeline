@@ -15,6 +15,11 @@ updates:
       dev-tooling:
         dependency-type: development
         update-types: [minor, patch]
+    ignore:
+      # Preset v10 needs conventional-changelog-writer 9+, but semantic-release 25
+      # still ships writer 8, so v10 breaks release notes. Remove once they align.
+      - dependency-name: conventional-changelog-conventionalcommits
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: github-actions
     directory: /
