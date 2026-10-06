@@ -1,0 +1,2 @@
+# Reject commit messages that don't follow Conventional Commits
+npx --no -- commitlint --edit "$1"
