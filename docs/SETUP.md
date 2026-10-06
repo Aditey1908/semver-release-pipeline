@@ -14,7 +14,9 @@ export REPO=$(gh repo view --json nameWithOwner -q .nameWithOwner)
 gh repo create semver-release-pipeline --public --source=. --remote=origin --push
 ```
 
-Use a **public** repository. GitHub Pages, environment approval rules and free GHCR pulls all work on the free plan only for public repositories.
+Use `--private` instead of `--public` if you prefer. Everything works in a private repository on GitHub Pro, which is included in the free [GitHub Student Developer Pack]. On the Free plan, GitHub Pages and environment approval rules need a public repository. Private repositories also consume the Actions minutes quota: one release run takes about 15 minutes.
+
+[GitHub Student Developer Pack]: https://education.github.com/pack
 
 The push to `main` starts the **Release** workflow. If the history contains a `feat` or `fix` commit, it publishes **v1.0.0**.
 
@@ -40,18 +42,28 @@ gh variable set DEPLOY_PAGES --body true
 
 Every stable release is then published to `https://OWNER.github.io/REPO/`. That copy is static, so the dashboard shows "Static site" as its runtime and the calculator runs in the browser.
 
-## 4. Make the container image public
+> A Pages site is **publicly accessible even when the repository is private**. It shows the version, commit hashes and changelog entries.
 
-After the first release, open **Your profile → Packages → semver-release-pipeline → Package settings → Change visibility → Public**. Anyone, including Render, can then pull it:
+## 4. Container image access
+
+An image built from a public repository can be made public: open **Your profile → Packages → semver-release-pipeline → Package settings → Change visibility → Public**. Anyone, including Render, can then pull it:
 
 ```bash
 docker run -p 3000:3000 ghcr.io/OWNER/REPO:latest
 ```
 
+An image from a private repository stays private. To pull it, authenticate with a [classic personal access token](https://github.com/settings/tokens) that has only the `read:packages` scope:
+
+```bash
+echo "$TOKEN" | docker login ghcr.io -u OWNER --password-stdin
+```
+
+Render needs the same token, as described in the next section.
+
 ## 5. Render: production container hosting (optional, free)
 
 1. Sign in at [render.com](https://render.com) with GitHub.
-2. Choose **New → Web Service → Existing image**. Enter `ghcr.io/OWNER/REPO:latest` and pick the **Free** instance type.
+2. Choose **New → Web Service → Existing image**. Enter `ghcr.io/OWNER/REPO:latest` and pick the **Free** instance type. If the image is private, add a **Registry Credential**: choose GitHub, enter your username, and use the `read:packages` token from step 4.
 3. Under **Environment**, add `APP_ENV=production`. Render sets `PORT` itself, and the app reads it.
 4. Under **Settings → Health Check Path**, enter `/health`.
 5. Copy the **Deploy Hook** URL from **Settings**, then give the pipeline the hook and the service URL:
