@@ -1,0 +1,18 @@
+# Keep the build context small and free of secrets
+.git
+.github
+.husky
+node_modules
+dist
+release
+coverage
+reports
+tests
+docs
+*.md
+!CHANGELOG.md
+.env
+.env.*
+Dockerfile
+docker-compose.yml
+.dockerignore

@@ -1,0 +1,22 @@
+# Deployment manifest used locally and by the staging stage of the pipeline.
+#
+#   Local:   docker compose up --build
+#   Staging: IMAGE=ghcr.io/<owner>/<repo>:1.4.2 APP_ENV=staging docker compose up -d --no-build --wait
+services:
+  app:
+    image: ${IMAGE:-semver-release-pipeline:local}
+    build:
+      context: .
+      args:
+        APP_VERSION: ${APP_VERSION:-}
+    ports:
+      - "${HOST_PORT:-3000}:3000"
+    environment:
+      APP_ENV: ${APP_ENV:-local}
+    restart: unless-stopped
+    # Hardening: the app never writes to disk and needs no extra privileges
+    read_only: true
+    tmpfs:
+      - /tmp
+    security_opt:
+      - no-new-privileges:true
