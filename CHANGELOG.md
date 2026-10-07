@@ -2,6 +2,22 @@
 
 All notable changes to this project are documented in this file. It is generated automatically by [semantic-release](https://github.com/semantic-release/semantic-release) from [Conventional Commits](https://www.conventionalcommits.org) — do not edit it by hand.
 
+## [1.1.0](https://github.com/Aditey1908/semver-release-pipeline/compare/v1.0.0...v1.1.0) (2026-10-07)
+
+### Features
+
+* **ui:** rebuild the dashboard in React with neobrutalism.dev components ([987628c](https://github.com/Aditey1908/semver-release-pipeline/commit/987628cd6b48a525e30241bb554ee9cf061f2e11))
+
+### Documentation
+
+* describe the new dashboard stack and add team members to the report ([2d9618c](https://github.com/Aditey1908/semver-release-pipeline/commit/2d9618c33ce87965ea104ef2051357c40318fa7e))
+* **setup:** cover private repositories and private GHCR images ([24cb053](https://github.com/Aditey1908/semver-release-pipeline/commit/24cb05342ae8ffaac4c0a034e7d92466583ee6d8))
+
+### Continuous Integration
+
+* **commitlint:** accept Dependabot's capitalised "Bump" subjects ([542dce4](https://github.com/Aditey1908/semver-release-pipeline/commit/542dce4a737cd15e75f30517282280182ff69c36))
+* **dependabot:** hold the changelog preset at v9 until semantic-release supports v10 ([a15adc8](https://github.com/Aditey1908/semver-release-pipeline/commit/a15adc8eaccba63e0dd58f1fd8c7bbca46cfc255))
+
 ## 1.0.0 (2026-10-06)
 
 ### Features
