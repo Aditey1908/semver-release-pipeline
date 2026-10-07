@@ -8,7 +8,7 @@
 | Department | Computer Engineering |
 | Course | DevOps (216U01E744), Semester VII, L.Y. B.Tech, 2026–27 |
 | Group members | Aditey Kshirsagar (16010123017) · Aditya Baheti (16010123023) |
-| Faculty in-charge | _Name_ |
+| Faculty in-charge | Dr. Nirmala Baloorkar |
 | Repository | https://github.com/Aditey1908/semver-release-pipeline |
 | Live deployment | https://devopslabca.onrender.com |
 
@@ -225,19 +225,69 @@ Every released image stays in GHCR under its version tag, so rolling back is an 
 
 ## 6. Results
 
-_Add screenshots after running the pipeline. Suggested figures:_
+All figures come from real runs of this project's pipeline on 6–7 October 2026. The repository is private, so the pipeline evidence is shown as GitHub CLI output and GitHub Actions log excerpts rather than screenshots of GitHub's web pages. Excerpts are filtered with `grep`, and timestamps, long URLs and image digests are shortened for readability; nothing else is changed.
 
-| Figure | Screenshot of |
-|---|---|
-| 2 | Pull request with all CI checks passing and the release-preview summary |
-| 3 | A Release workflow run graph: quality gate → release → image → staging → production |
-| 4 | semantic-release log: "The next release version is X.Y.Z" |
-| 5 | GitHub Releases page with generated notes and assets |
-| 6 | GHCR package page showing the `X.Y.Z`, `X.Y`, `X` and `latest` tags |
-| 7 | `CHANGELOG.md` and `git log --oneline --decorate` showing release commits and tags |
-| 8 | Production approval prompt and the smoke-test summary |
-| 9 | Live dashboard showing the deployed version and release history |
-| 10 | Rollback run deploying an earlier version |
+### 6.1 Version control
+
+![Commit rejected by the commit-msg hook](images/fig-02-commitlint.png)
+
+*Figure 2: The `commit-msg` Git hook runs commitlint and rejects messages that don't follow Conventional Commits, before the commit is created.*
+
+![Git history, tags and changelog](images/fig-03-git-history.png)
+
+*Figure 3: Every commit follows Conventional Commits. Each release is a `chore(release)` commit tagged `vX.Y.Z`, and `CHANGELOG.md` is generated from the commit messages.*
+
+### 6.2 Automated testing
+
+![Test and coverage results](images/fig-04-tests-coverage.png)
+
+*Figure 4: All 94 unit and API tests pass, and coverage is well above the enforced thresholds (90% lines, statements and functions; 85% branches).*
+
+### 6.3 Continuous integration on a pull request
+
+![Pull request checks](images/fig-05-pr-checks.png)
+
+*Figure 5: The pull request that added this section. Every CI check passes, and the release preview correctly reports that a documentation-only change will not create a release.*
+
+### 6.4 Automated release: v1.1.0
+
+Merging `feat(ui): rebuild the dashboard in React with neobrutalism.dev components` into `main` produced release v1.1.0 with no manual steps.
+
+![Release workflow run](images/fig-06-release-run.png)
+
+*Figure 6: The Release workflow. The quality gate, semantic release, image publication, staging and production all succeeded. The Conventional commits job only runs on pull requests, and the Pages jobs are switched off for this private repository.*
+
+![semantic-release analysis](images/fig-07-semantic-release.png)
+
+*Figure 7: semantic-release finds the previous tag (v1.0.0), analyses the five commits since it, identifies the `feat` commit as a minor change, and creates tag v1.1.0.*
+
+![Generated GitHub Release](images/fig-08-github-release.png)
+
+*Figure 8: The GitHub Release, with notes grouped by commit type and the versioned build artifact and checksum attached.*
+
+![Image tags pushed to GHCR](images/fig-09-ghcr-tags.png)
+
+*Figure 9: One multi-architecture image, pushed to GHCR under the tags `1.1.0`, `1.1`, `1` and `latest`. All four tags point to the same digest.*
+
+### 6.5 Deployment
+
+![Staging and production verification](images/fig-10-deploy-verification.png)
+
+*Figure 10: Staging starts the released image with Docker Compose and waits until it is healthy. In production, the first check found Render still serving v1.0.0, so the smoke test waited and passed only once v1.1.0 was live.*
+
+![Live production dashboard](images/fig-11-live-dashboard.png)
+
+*Figure 11: The production deployment at https://devopslabca.onrender.com, showing the version, commit and build time stamped in by the pipeline.*
+
+### 6.6 Rollback
+
+![Rollback run](images/fig-12-rollback-run.png)
+
+*Figure 12: A rollback is a manual run of the Deploy workflow with an earlier version. Production was serving v1.1.0, so the check waited until it served v1.0.0.*
+
+![Production after rollback](images/fig-13-rollback-live-v1.0.0.png)
+
+*Figure 13: Production after the rollback, running v1.0.0 with its original interface. The same workflow then rolled production forward to v1.1.0.*
 
 The following were verified during development:
 
