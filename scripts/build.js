@@ -3,8 +3,7 @@
  * Application build: produces dist/, a self-contained static site that is
  * served by the Express container and also published to GitHub Pages.
  *
- *   dist/index.html, css/, js/   frontend (from public/)
- *   dist/js/core/                semver engine shared with the server (from src/core/)
+ *   dist/index.html, assets/     React dashboard bundled by Vite (from web/)
  *   dist/build-info.json         version, commit and build date baked into this build
  *   dist/releases.json           release history parsed from CHANGELOG.md
  *
@@ -12,9 +11,10 @@
  * (APP_VERSION, GIT_SHA, BUILD_DATE, SOURCE_URL) and falls back to local values.
  */
 import { execFileSync } from 'node:child_process';
-import { cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { build } from 'vite';
 import { parseChangelog } from '../src/core/changelog.js';
 import { isValid } from '../src/core/semver.js';
 
@@ -55,10 +55,11 @@ const buildInfo = {
 const changelog = await readFile(path.join(root, 'CHANGELOG.md'), 'utf8').catch(() => '');
 const releases = parseChangelog(changelog);
 
-await rm(outDir, { recursive: true, force: true });
-await mkdir(outDir, { recursive: true });
-await cp(path.join(root, 'public'), outDir, { recursive: true });
-await cp(path.join(root, 'src/core'), path.join(outDir, 'js/core'), { recursive: true });
+await build({
+  configFile: path.join(root, 'vite.config.js'),
+  logLevel: 'warn',
+  build: { outDir, emptyOutDir: true },
+});
 await writeFile(path.join(outDir, 'build-info.json'), `${JSON.stringify(buildInfo, null, 2)}\n`);
 await writeFile(path.join(outDir, 'releases.json'), `${JSON.stringify(releases, null, 2)}\n`);
 

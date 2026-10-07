@@ -95,7 +95,9 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version: ${{ env.NODE_VERSION }}
-      - name: Build dist/ (no dependencies needed)
+          cache: npm
+      - run: npm ci
+      - name: Build dist/ (Vite bundle + build metadata)
         env:
           GIT_SHA: ${{ github.sha }}
           SOURCE_URL: ${{ github.server_url }}/${{ github.repository }}
