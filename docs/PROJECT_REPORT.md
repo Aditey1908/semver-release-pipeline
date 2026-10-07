@@ -7,10 +7,10 @@
 | Institute | K. J. Somaiya College of Engineering, Somaiya Vidyavihar University |
 | Department | Computer Engineering |
 | Course | DevOps (216U01E744), Semester VII, L.Y. B.Tech, 2026–27 |
-| Group members | _Name 1 (Roll No.)_ · _Name 2 (Roll No.)_ · _Name 3 (Roll No.)_ |
+| Group members | Aditey Kshirsagar (16010123017) · Aditya Baheti (16010123023) |
 | Faculty in-charge | _Name_ |
-| Repository | _https://github.com/OWNER/REPO_ |
-| Live deployment | _Render URL / GitHub Pages URL_ |
+| Repository | https://github.com/Aditey1908/semver-release-pipeline |
+| Live deployment | https://devopslabca.onrender.com |
 
 ---
 
@@ -64,8 +64,9 @@ The project covers every stage named in the evaluation scheme: version control, 
 |---|---|---|
 | Version control | Git, GitHub | Source history, pull requests, tags, releases |
 | Commit convention | commitlint, Husky | Rejects non-conforming commits locally (Git hook) and in CI |
-| Application | Node.js 24 LTS, Express 5, Helmet | Release dashboard and semantic-version REST API |
-| Build | Node build script | Produces `dist/` with version metadata stamped in |
+| Application | Node.js 24 LTS, Express 5, Helmet | Semantic-version REST API and static file server |
+| Frontend | React 19, Tailwind CSS 4, neobrutalism.dev components | Release dashboard UI |
+| Build | Vite 8, Node build script | Bundles the dashboard into `dist/` and stamps version metadata into it |
 | Testing | Vitest, Supertest, V8 coverage | Unit and API integration tests, coverage thresholds, JUnit report |
 | Code quality | ESLint 10, npm audit | Static analysis, dependency vulnerability gate |
 | Release automation | semantic-release | Version calculation, CHANGELOG, Git tag, GitHub Release |
@@ -116,12 +117,12 @@ The application under delivery is a Node.js/Express service:
 
 - `src/core/` is a dependency-free semantic-versioning engine. It parses, compares and bumps versions according to SemVer 2.0.0, analyses Conventional Commits, and parses the generated changelog. Because it has no Node-specific imports (enforced by an ESLint rule), the same code runs on the server and in the browser.
 - `src/server/` contains the REST API: `/health`, `/api/version`, `/api/releases`, `/api/semver/next`, `/api/semver/bump` and `/api/semver/compare`. It validates input, applies security headers with Helmet, and returns errors as JSON without exposing internals.
-- `public/` is a dashboard showing the deployed version, commit, build time and environment, the release history, and an interactive next-version calculator.
+- `web/` is a React dashboard showing the deployed version, commit, build time and environment, the release history, and an interactive next-version calculator. It is styled with Tailwind CSS and the open-source [neobrutalism.dev](https://www.neobrutalism.dev) component library (Card, Button, Badge, Input, Textarea, Table and Marquee). The components are copied into the project from the library's registry, as the library intends, and use its "Blue" theme. The calculator imports the same `src/core` engine as the server, so the browser and the API cannot disagree.
 - `src/index.js` writes structured JSON logs and shuts down gracefully on `SIGTERM`, which matters for containers.
 
 ### 5.3 Build
 
-`npm run build` produces `dist/`, a self-contained static site that both the container and GitHub Pages serve. During the build it writes:
+`npm run build` uses Vite to bundle the React dashboard into `dist/`, a self-contained static site with minified, content-hashed assets and self-hosted fonts. Both the container and GitHub Pages serve it, and asset URLs are relative so the same build works at any URL path. The build also writes:
 
 - `build-info.json`, containing the version, commit SHA, build time and repository URL. These come from the pipeline (`APP_VERSION`, `GIT_SHA`, …), with local fallbacks.
 - `releases.json`, the release history parsed from `CHANGELOG.md`.
@@ -130,7 +131,7 @@ The build fails if the version is not valid SemVer. This is how the release vers
 
 ### 5.4 Automated testing
 
-84 automated tests run with Vitest:
+94 automated tests run with Vitest:
 
 | Suite | Covers |
 |---|---|
@@ -138,6 +139,7 @@ The build fails if the version is not valid SemVer. This is how the release vers
 | `tests/unit/commits.test.js` | Commit parsing, `!` and `BREAKING CHANGE` detection, reverts, highest-impact selection, first release = 1.0.0 |
 | `tests/unit/changelog.test.js` | Parsing of a **real** CHANGELOG produced by semantic-release |
 | `tests/integration/api.test.js` | Every endpoint via Supertest, input validation, malformed JSON, 404/500 handling, security headers |
+| `tests/unit/dashboard.test.js` | Dashboard helpers: release-type classification, development-build detection, date formatting, data loading and its fallback when no API exists |
 
 Coverage thresholds of 90% lines, statements and functions and 85% branches are enforced, so CI fails if coverage drops. The achieved coverage is about 99% of lines. In CI the tests run on Node 22 and Node 24, and a JUnit report and an HTML coverage report are uploaded as artifacts.
 
@@ -148,7 +150,7 @@ After each deployment, `scripts/smoke-test.js` checks the live service. It verif
 The `Dockerfile` has three stages:
 
 1. **deps**: `npm ci --omit=dev`, so the image contains production dependencies only.
-2. **build**: runs the build script with the version metadata passed as build arguments.
+2. **build**: installs the build tooling and runs the Vite build, with the version metadata passed as build arguments. It runs on the build machine's native platform (`--platform=$BUILDPLATFORM`) because its output is plain static files, so multi-architecture builds don't have to emulate the slowest stage.
 3. **runtime**: `node:24-alpine` with only `package.json`, `src/`, `dist/` and the production `node_modules`.
 
 Hardening measures:
@@ -239,7 +241,7 @@ _Add screenshots after running the pipeline. Suggested figures:_
 
 The following were verified during development:
 
-- All 84 tests pass, with about 99% line coverage.
+- All 94 tests pass, with about 99% line coverage.
 - semantic-release was run against a test repository for four successive scenarios. A `fix` commit produced **1.0.1**, a `feat` produced **1.1.0**, a `ci`-only change produced **no release**, and a breaking change produced **2.0.0**. The app's own release preview predicted the same result in every case.
 - The production container layout passed every smoke check, and the smoke test failed as expected when the deployed version did not match the expected one.
 
@@ -248,8 +250,8 @@ The following were verified during development:
 | Requirement (LAB CA, Activity 2) | Where it is implemented |
 |---|---|
 | Version control using Git/GitHub | Conventional Commits, Husky hooks, PR workflow, Git tags `vX.Y.Z`, GitHub Releases |
-| Application build | `scripts/build.js` → `dist/` with stamped version metadata; release tarball and checksum |
-| Automated testing | 84 Vitest unit and API tests, coverage thresholds, Node 22/24 matrix, post-deployment smoke tests |
+| Application build | Vite production bundle of the React dashboard plus stamped version metadata (`scripts/build.js` → `dist/`); release tarball and checksum |
+| Automated testing | 94 Vitest unit and API tests, coverage thresholds, Node 22/24 matrix, post-deployment smoke tests |
 | Containerisation using Docker | Multi-stage `Dockerfile`, hardened runtime, `HEALTHCHECK`, Compose manifest, multi-arch images in GHCR |
 | CI/CD pipeline using GitHub Actions | `ci.yml`, `release.yml`, `deploy.yml` (reusable workflows, environments, concurrency) |
 | Deployment to a suitable environment | Staging (Compose on the runner) → production (Render container + GitHub Pages), with approval and rollback |
@@ -264,6 +266,7 @@ The following were verified during development:
 | Git hooks installed by `npm ci` would run commitlint on the release commit inside CI | `HUSKY=0` disables hooks in all workflows, and commitlint ignores `chore(release)` commits |
 | `docker/build-push-action` builds the *triggering* commit by default, which does not contain the bumped version | The image job checks out the new tag and builds with `context: .` |
 | The newest changelog preset (`conventional-changelog-conventionalcommits@10`) failed at release time because it needs a newer changelog writer than semantic-release 25 ships. A dry run against a local test remote caught this. | Pinned the preset to the compatible major version (`^9`) and re-ran the full release simulation |
+| The React build uses native binaries (Rolldown, Tailwind's engine, LightningCSS), and a lockfile created on macOS might not include the Linux and Alpine builds needed by CI and Docker | Checked that `package-lock.json` lists the Linux glibc and musl builds for x64 and arm64, and tested the Docker build stage with only the files it copies |
 | A broken release must not reach users | The quality gate runs before any version is created, staging must pass before production, and the smoke test checks the exact deployed version |
 
 ## 9. Conclusion and future scope

@@ -16,7 +16,7 @@ A complete DevOps delivery pipeline in which **nobody chooses version numbers by
 | `feat!: …` or a `BREAKING CHANGE:` footer | `feat(api)!: rename endpoint` | **MAJOR** 1.4.2 → 2.0.0 |
 | `docs:` `test:` `ci:` `chore:` `refactor:` `style:` `build:` | `docs: update README` | no release |
 
-The application being delivered is a **release dashboard and semantic-version API**. It shows which version is deployed and the full release history. It also has a calculator that predicts the next version from commit messages, using the same rules as the pipeline.
+The application being delivered is a **release dashboard and semantic-version API**. It shows which version is deployed and the full release history. It also has a calculator that predicts the next version from commit messages, using the same rules as the pipeline. The UI is built with React, Vite and Tailwind CSS, using [neobrutalism.dev](https://www.neobrutalism.dev) components.
 
 ---
 
@@ -51,9 +51,9 @@ flowchart LR
 │   │   └── changelog.js #   CHANGELOG.md → structured release history
 │   ├── server/          # Express app: /health, /api/version, /api/releases, /api/semver/*
 │   └── index.js         # Process entrypoint (logging, graceful SIGTERM shutdown)
-├── public/              # Dashboard frontend (HTML/CSS/JS modules)
+├── web/                 # Dashboard: React + Tailwind, neobrutalism.dev components (bundled by Vite)
 ├── scripts/
-│   ├── build.js           # Application build → dist/ (+ build-info.json, releases.json)
+│   ├── build.js           # Application build: Vite bundle → dist/ (+ build-info.json, releases.json)
 │   ├── smoke-test.js      # Post-deployment verification (health + expected version)
 │   ├── next-version.js    # Release preview from commits since the last tag
 │   └── package-release.js # Versioned .tar.gz + SHA256SUMS for the GitHub Release
@@ -77,6 +77,7 @@ npm test               # unit + API tests
 npm run test:coverage  # with coverage thresholds (90% lines)
 npm run lint
 npm run dev            # build + start on http://localhost:3000 with auto-reload
+npm run dev:web        # (optional, second terminal) UI with hot reload on http://localhost:5173
 ```
 
 With Docker:
@@ -90,7 +91,7 @@ docker run -p 3000:3000 ghcr.io/<owner>/<repo>:latest   # any released version
 
 | Command | What it does |
 |---|---|
-| `npm run build` | Builds `dist/` and stamps the version, commit and date into it |
+| `npm run build` | Bundles the dashboard with Vite into `dist/` and stamps the version, commit and date into it |
 | `npm run release:preview` | Shows which version the commits since the last tag would release |
 | `npm run release:dry-run` | Runs semantic-release in dry-run mode (needs `GITHUB_TOKEN=$(gh auth token)`) |
 | `npm run smoke -- <url> --expect-version 1.2.3` | Runs the post-deployment checks against any deployment |
