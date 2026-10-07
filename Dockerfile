@@ -12,12 +12,16 @@ COPY package.json package-lock.json ./
 RUN npm ci --omit=dev --ignore-scripts && npm cache clean --force
 
 # ---------------------------------------------------------------------------
-# Stage 2 — application build: dashboard + build metadata in dist/
+# Stage 2 — application build: React dashboard bundled by Vite + build metadata
+# Runs on the builder's native platform: the output is static files, so
+# multi-arch images don't need this stage emulated.
 # ---------------------------------------------------------------------------
-FROM node:${NODE_VERSION}-alpine AS build
+FROM --platform=$BUILDPLATFORM node:${NODE_VERSION}-alpine AS build
 WORKDIR /app
-COPY package.json CHANGELOG.md ./
-COPY public ./public
+COPY package.json package-lock.json ./
+RUN npm ci --ignore-scripts
+COPY CHANGELOG.md vite.config.js ./
+COPY web ./web
 COPY src ./src
 COPY scripts/build.js ./scripts/build.js
 # Supplied by the pipeline; build.js falls back to package.json when empty
