@@ -230,7 +230,7 @@ Every released image stays in GHCR under its version tag, so rolling back is an 
 
 ## 6. Results
 
-All figures come from real runs of this project's pipeline on 6–7 October 2026. The repository is private, so the pipeline evidence is shown as GitHub CLI output and GitHub Actions log excerpts rather than screenshots of GitHub's web pages. Excerpts are filtered with `grep`, and timestamps, long URLs and image digests are shortened for readability; nothing else is changed.
+All figures come from real runs of this project's pipeline between 6 and 21 October 2026. The repository is private, so the pipeline evidence is shown as GitHub CLI output and GitHub Actions log excerpts rather than screenshots of GitHub's web pages. Excerpts are filtered with `grep`, and timestamps, long URLs and image digests are shortened for readability; nothing else is changed.
 
 ### 6.1 Version control
 
@@ -286,13 +286,15 @@ Merging `feat(ui): rebuild the dashboard in React with neobrutalism.dev componen
 
 ### 6.6 Rollback
 
+On 21 October, release v1.1.1 (an upgrade of Express to 5.3.0) gave a second version with the current interface. Production was then rolled back to v1.1.0 and forward again.
+
 ![Rollback run](images/fig-12-rollback-run.png)
 
-*Figure 12: A rollback is a manual run of the Deploy workflow with an earlier version. Production was serving v1.1.0, so the check waited until it served v1.0.0.*
+*Figure 12: A rollback is a manual run of the Deploy workflow with an earlier version. Production was serving v1.1.1, so the check waited until it served v1.1.0.*
 
-![Production after rollback](images/fig-13-rollback-live-v1.0.0.png)
+![Production after rollback](images/fig-13-rollback-live.png)
 
-*Figure 13: Production after the rollback, running v1.0.0 with its original interface. The same workflow then rolled production forward to v1.1.0.*
+*Figure 13: Production after the rollback, running v1.1.0. The same workflow then rolled production forward to v1.1.1.*
 
 The following were verified during development:
 
