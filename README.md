@@ -122,4 +122,4 @@ docker run -p 3000:3000 ghcr.io/<owner>/<repo>:latest   # any released version
 - [docs/SETUP.md](docs/SETUP.md): one-time GitHub, GHCR, Pages and Render configuration
 - [docs/DEMO_GUIDE.md](docs/DEMO_GUIDE.md): step-by-step script for demonstrating the pipeline
 - [docs/PROJECT_REPORT.md](docs/PROJECT_REPORT.md): project report for submission
-- [CHANGELOG.md](CHANGELOG.md): generated release notes
+- [CHANGELOG.md](CHANGELOG.md): generated release notes.
