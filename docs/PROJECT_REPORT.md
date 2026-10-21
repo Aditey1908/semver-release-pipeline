@@ -41,7 +41,7 @@ In many teams, releasing means editing a version number, writing release notes, 
 
 ### 1.3 Scope
 
-The project covers every stage named in the evaluation scheme: version control, build, automated testing, containerisation, CI/CD, deployment and documentation. It uses only free services: GitHub, GitHub Actions, GHCR, GitHub Pages and Render's free tier.
+The project covers every stage named in the evaluation scheme: version control, build, automated testing, containerisation, CI/CD, deployment and documentation. It uses only free services: GitHub, GitHub Actions, GHCR and Render's free tier.
 
 ## 2. Background
 
@@ -73,22 +73,27 @@ The project covers every stage named in the evaluation scheme: version control, 
 | Containerisation | Docker, Buildx, Docker Compose | Multi-stage image, multi-arch build, deployment manifest |
 | Registry | GitHub Container Registry (GHCR) | Versioned image storage with SBOM and provenance |
 | CI/CD | GitHub Actions | CI, release, deployment and rollback workflows |
-| Hosting | Render (container), GitHub Pages (static dashboard) | Production environments |
+| Hosting | Render; GitHub Pages (optional) | Production container; an optional static copy of the dashboard |
 | Maintenance | Dependabot | Automated dependency updates with conventional prefixes |
 
 ## 4. System architecture
 
 ```mermaid
-flowchart LR
-    dev([Developer]) -->|"git commit (commitlint hook)"| pr[Pull request]
-    pr --> ci{{"CI quality gate"}}
-    ci -->|merge| main[(main)]
-    main --> gate{{Quality gate}}
-    gate --> sr["semantic-release<br/>version · CHANGELOG · tag · GitHub Release"]
-    sr --> img["Docker Buildx<br/>amd64 + arm64"]
-    img --> ghcr[(GHCR)]
-    ghcr --> stg[Staging + smoke test]
-    stg --> prod["Production (approval)<br/>Render · GitHub Pages"]
+flowchart TB
+    subgraph PR["1 · Every pull request"]
+        direction LR
+        dev([Developer]) -->|"git commit (commitlint hook)"| pr[Pull request] --> ci{{"CI quality gate"}}
+    end
+    subgraph REL["2 · Every push to main"]
+        direction LR
+        main[(main)] --> gate{{Quality gate}} --> sr["semantic-release<br/>version · CHANGELOG · tag · GitHub Release"]
+    end
+    subgraph DEP["3 · Every new version"]
+        direction LR
+        img["Docker Buildx<br/>amd64 + arm64"] --> ghcr[(GHCR)] --> stg[Staging + smoke test] --> prod["Production<br/>Render · version checked"]
+    end
+    PR -->|merge| REL
+    REL -->|new version| DEP
 ```
 
 _Figure 1: Pipeline overview_
@@ -99,7 +104,7 @@ The pipeline consists of three GitHub Actions workflows:
 |---|---|---|
 | `ci.yml` | Every pull request; called by `release.yml` | Commit and PR-title lint · ESLint · tests on Node 22 and 24 with coverage · dependency audit · build artifact · Docker build and container smoke test · release preview |
 | `release.yml` | Push to `main` (stable) or `beta` (pre-release) | Quality gate → semantic release → image publish → staging → production |
-| `deploy.yml` | Called by `release.yml`; manual for rollback | Validate version → confirm image → deploy → smoke test → publish Pages |
+| `deploy.yml` | Called by `release.yml`; manual for rollback | Validate version → confirm image → deploy → smoke test → publish Pages (optional) |
 
 `ci.yml` is a *reusable workflow*. The checks that guard pull requests run again, unchanged, as the first stage of every release, so the same definition is never duplicated. `deploy.yml` is reusable in the same way, so a normal release and a rollback follow the same, already-tested deployment path.
 
@@ -122,7 +127,7 @@ The application under delivery is a Node.js/Express service:
 
 ### 5.3 Build
 
-`npm run build` uses Vite to bundle the React dashboard into `dist/`, a self-contained static site with minified, content-hashed assets and self-hosted fonts. Both the container and GitHub Pages serve it, and asset URLs are relative so the same build works at any URL path. The build also writes:
+`npm run build` uses Vite to bundle the React dashboard into `dist/`, a self-contained static site with minified, content-hashed assets and self-hosted fonts. The container serves it, the same build can be published to GitHub Pages, and asset URLs are relative so the same build works at any URL path. The build also writes:
 
 - `build-info.json`, containing the version, commit SHA, build time and repository URL. These come from the pipeline (`APP_VERSION`, `GIT_SHA`, …), with local fallbacks.
 - `releases.json`, the release history parsed from `CHANGELOG.md`.
@@ -205,7 +210,7 @@ Pre-releases are tagged only with their full version and the channel name (`beta
 Deployment *promotes* the image that was already built. Nothing is rebuilt between environments.
 
 - **Staging**: an ephemeral environment on the runner. The released image is pulled from GHCR and started with `docker compose up --wait`, which waits for the health check. The smoke test then verifies the version, the logs are collected, and the environment is torn down.
-- **Production**: the GitHub `production` environment can require a reviewer's approval, which gives a manual release gate. The job calls Render's deploy hook with `imgURL=ghcr.io/…:X.Y.Z`. It then polls the public URL until it reports the new version. Finally it publishes the dashboard for that version to GitHub Pages.
+- **Production**: the GitHub `production` environment can require a reviewer's approval, which gives a manual release gate. The job calls Render's deploy hook with `imgURL=ghcr.io/…:X.Y.Z`. It then polls the public URL until it reports the new version. When Pages is enabled, it also publishes the dashboard for that version there; it is switched off for this private repository.
 - **Pre-releases** from `beta` stop at staging.
 
 Concurrency groups ensure two releases never run at once and that a release is never cancelled midway.
@@ -235,7 +240,7 @@ All figures come from real runs of this project's pipeline on 6–7 October 2026
 
 ![Git history, tags and changelog](images/fig-03-git-history.png)
 
-*Figure 3: Every commit follows Conventional Commits. Each release is a `chore(release)` commit tagged `vX.Y.Z`, and `CHANGELOG.md` is generated from the commit messages.*
+*Figure 3: The history up to the v1.1.0 release. Every commit follows Conventional Commits, each release is a `chore(release)` commit tagged `vX.Y.Z`, and `CHANGELOG.md` is generated from the commit messages.*
 
 ### 6.2 Automated testing
 
@@ -304,7 +309,7 @@ The following were verified during development:
 | Automated testing | 94 Vitest unit and API tests, coverage thresholds, Node 22/24 matrix, post-deployment smoke tests |
 | Containerisation using Docker | Multi-stage `Dockerfile`, hardened runtime, `HEALTHCHECK`, Compose manifest, multi-arch images in GHCR |
 | CI/CD pipeline using GitHub Actions | `ci.yml`, `release.yml`, `deploy.yml` (reusable workflows, environments, concurrency) |
-| Deployment to a suitable environment | Staging (Compose on the runner) → production (Render container + GitHub Pages), with approval and rollback |
+| Deployment to a suitable environment | Staging (Compose on the runner) → production (Render container, optional approval gate), with rollback |
 | Project documentation | `README.md`, `docs/SETUP.md`, `docs/DEMO_GUIDE.md`, this report, generated `CHANGELOG.md` |
 
 ## 8. Challenges and solutions
