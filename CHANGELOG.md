@@ -2,6 +2,17 @@
 
 All notable changes to this project are documented in this file. It is generated automatically by [semantic-release](https://github.com/semantic-release/semantic-release) from [Conventional Commits](https://www.conventionalcommits.org) — do not edit it by hand.
 
+## [1.1.1](https://github.com/Aditey1908/semver-release-pipeline/compare/v1.1.0...v1.1.1) (2026-10-21)
+
+### Bug Fixes
+
+* **deps:** bump express from 5.2.1 to 5.3.0 ([#6](https://github.com/Aditey1908/semver-release-pipeline/issues/6)) ([eb3d2ce](https://github.com/Aditey1908/semver-release-pipeline/commit/eb3d2ced67c7b8c550f199742b012cf2a8712814))
+
+### Documentation
+
+* **report:** add a PDF export and refresh figures for the current history ([7fb35a1](https://github.com/Aditey1908/semver-release-pipeline/commit/7fb35a1cdb2d7a4b52835d5ab5ec07bf64de50c2))
+* **report:** add pipeline results with figures and faculty in-charge ([#2](https://github.com/Aditey1908/semver-release-pipeline/issues/2)) ([2e2edc7](https://github.com/Aditey1908/semver-release-pipeline/commit/2e2edc75089db3da4c5e74c9d942273e7680c716))
+
 ## [1.1.0](https://github.com/Aditey1908/semver-release-pipeline/compare/v1.0.0...v1.1.0) (2026-10-07)
 
 ### Features
