@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { nextVersion, splitCommitLog } from '../core/commits.js';
-import { bump, compare, isValid, RELEASE_TYPES } from '../core/semver.js';
+import { bump, compare, isValid, parse, RELEASE_TYPES } from '../core/semver.js';
 
 const MAX_COMMITS = 500;
 
@@ -61,6 +61,11 @@ export function createApiRouter({ buildInfo, releases, environment, startedAt })
     } catch (error) {
       throw new BadRequest(error.message);
     }
+  });
+
+  router.get('/semver/parse', (req, res) => {
+    requireVersion(req.query.version, 'version');
+    res.json(parse(req.query.version));
   });
 
   router.get('/semver/compare', (req, res) => {

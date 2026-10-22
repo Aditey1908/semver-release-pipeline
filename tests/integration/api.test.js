@@ -110,6 +110,11 @@ describe('GET /api/semver/bump and /compare', () => {
     expect(res.body.error).toMatch(/pre-release identifier/);
   });
 
+  it('parses a version into its parts', async () => {
+    const res = await request(app).get('/api/semver/parse?version=2.1.0-rc.1').expect(200);
+    expect(res.body).toMatchObject({ major: 2, minor: 1, patch: 0, prerelease: ['rc', 1] });
+  });
+
   it('compares versions by precedence', async () => {
     const res = await request(app).get('/api/semver/compare?a=1.10.0&b=1.9.0').expect(200);
     expect(res.body).toEqual({ a: '1.10.0', b: '1.9.0', result: 1, relation: 'higher' });
