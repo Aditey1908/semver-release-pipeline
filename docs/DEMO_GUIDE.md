@@ -3,7 +3,7 @@
 A step-by-step script for demonstrating the pipeline live. It takes about 15 minutes, most of it waiting for workflows to run. Open these tabs beforehand:
 
 - the repository's **Actions**, **Releases** and **Packages** pages
-- the deployed dashboard (Render URL or GitHub Pages)
+- the live site, https://devopslabca.onrender.com
 - a terminal in the project folder
 
 > **Before the demo:** complete [SETUP.md](SETUP.md), make sure at least one release exists, and open the Render URL once so the free instance is awake.
@@ -31,36 +31,38 @@ git commit --allow-empty -m "updated stuff"      # ✖ rejected by commitlint (c
 git commit --allow-empty -m "Feat: Something."   # ✖ rejected (type case, subject rules)
 ```
 
-The CI pipeline checks the same rules on every pull request, so they can't be bypassed with `--no-verify`.
+CI checks the same rules again on every pull request, so skipping the hook with `--no-verify` doesn't get a bad message into a reviewed change.
 
 ## 3. A feature becomes a MINOR release (6 min)
 
-Create a branch and add a small endpoint. Add this route to `src/server/api.js`, next to the other `/semver` routes. `parse` must be added to the existing import from `../core/semver.js`.
+Create a branch and add a small endpoint that checks whether a version number is valid. Add this route to `src/server/api.js`, next to the other `/semver` routes:
 
 ```js
-  router.get('/semver/parse', (req, res) => {
-    requireVersion(req.query.version, 'version');
-    res.json(parse(req.query.version));
+  router.get('/semver/valid', (req, res) => {
+    const { version } = req.query;
+    if (typeof version !== 'string') throw new BadRequest('"version" is required');
+    res.json({ version, valid: isValid(version) });
   });
 ```
 
 Add a test to the `GET /api/semver/bump and /compare` block in `tests/integration/api.test.js`:
 
 ```js
-  it('parses a version into its parts', async () => {
-    const res = await request(app).get('/api/semver/parse?version=2.1.0-rc.1').expect(200);
-    expect(res.body).toMatchObject({ major: 2, minor: 1, patch: 0, prerelease: ['rc', 1] });
+  it('checks whether a version is valid', async () => {
+    await request(app).get('/api/semver/valid?version=2.0.0-rc.1').expect(200, { version: '2.0.0-rc.1', valid: true });
+    await request(app).get('/api/semver/valid?version=1.2').expect(200, { version: '1.2', valid: false });
+    await request(app).get('/api/semver/valid').expect(400);
   });
 ```
 
 Then:
 
 ```bash
-git switch -c feat/parse-endpoint
+git switch -c feat/valid-endpoint
 git add -A
-git commit -m "feat(api): add version parse endpoint"   # hook runs lint + tests
+git commit -m "feat(api): add version validation endpoint"   # hook runs lint + tests
 npm run release:preview        # → Next release: vX.(Y+1).0 (minor)
-git push -u origin feat/parse-endpoint
+git push -u origin feat/valid-endpoint
 gh pr create --fill
 ```
 
@@ -90,7 +92,7 @@ Push the commit `fix(ui): correct calculator hint text` to get `X.Y.1`. A `docs:
 
 ## 5. Rollback (2 min)
 
-Go to **Actions → Deploy → Run workflow**, enter the *previous* version (for example `1.0.0`) and choose `production`.
+Go to **Actions → Deploy → Run workflow**, enter the *previous* version (for example `1.1.1`) and choose `production`.
 
 The old image is redeployed without a rebuild and verified. Refresh the dashboard to see the old version, then run the workflow again with the latest version to roll forward.
 

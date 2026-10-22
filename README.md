@@ -105,6 +105,7 @@ docker run -p 3000:3000 ghcr.io/<owner>/<repo>:latest   # any released version
 | `GET /api/releases` · `GET /api/releases/:version` | Release history parsed from the changelog |
 | `POST /api/semver/next` | `{ "current": "1.4.2", "commits": ["feat: x", "fix: y"] }` → `{ "next": "1.5.0", "releaseType": "minor", … }` |
 | `GET /api/semver/bump?version=1.4.2&type=minor` | → `1.5.0` (`type`: major, minor, patch, prerelease; optional `preid`) |
+| `GET /api/semver/parse?version=2.1.0-rc.1` | Splits a version into its parts: `{ "major": 2, "minor": 1, "patch": 0, "prerelease": ["rc", 1] }` |
 | `GET /api/semver/compare?a=1.10.0&b=1.9.0` | SemVer precedence: `{ "result": 1, "relation": "higher" }` |
 
 ## Versioning in detail

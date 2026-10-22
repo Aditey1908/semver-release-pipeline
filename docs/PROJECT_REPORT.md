@@ -112,7 +112,7 @@ The pipeline consists of three GitHub Actions workflows:
 
 ### 5.1 Version control and branching
 
-- **Trunk-based branching.** Short-lived feature branches merge into `main` through pull requests, and every merge to `main` is a release candidate. A `beta` branch publishes pre-releases (`X.Y.Z-beta.N`).
+- **Trunk-based development.** Everything lands on `main`, and every push to `main` is a release candidate. Feature and dependency changes went through pull requests, where CI checks them first (#6 and #7); small documentation changes were pushed directly. Either way, the full quality gate runs again on `main` before anything is released. A `beta` branch is configured for pre-releases (`X.Y.Z-beta.N`) but has not been needed yet.
 - **Commit convention enforced twice.** Husky installs a `commit-msg` hook that runs commitlint, and a `pre-commit` hook that runs lint and tests. Hooks can be skipped locally, so CI checks every commit in the PR, and the PR title, again.
 - **Dependabot** opens update PRs with `fix(deps):` for production dependencies, which produces a patch release, and `chore(deps):` for development tooling, which produces no release.
 
@@ -121,7 +121,7 @@ The pipeline consists of three GitHub Actions workflows:
 The application under delivery is a Node.js/Express service:
 
 - `src/core/` is a dependency-free semantic-versioning engine. It parses, compares and bumps versions according to SemVer 2.0.0, analyses Conventional Commits, and parses the generated changelog. Because it has no Node-specific imports (enforced by an ESLint rule), the same code runs on the server and in the browser.
-- `src/server/` contains the REST API: `/health`, `/api/version`, `/api/releases`, `/api/semver/next`, `/api/semver/bump` and `/api/semver/compare`. It validates input, applies security headers with Helmet, and returns errors as JSON without exposing internals.
+- `src/server/` contains the REST API: `/health`, `/api/version`, `/api/releases` (and `/api/releases/:version`), `/api/semver/next`, `/api/semver/bump`, `/api/semver/parse` and `/api/semver/compare`. It validates input, applies security headers with Helmet, and returns errors as JSON without exposing internals.
 - `web/` is a React dashboard showing the deployed version, commit, build time and environment, the release history, and an interactive next-version calculator. It is styled with Tailwind CSS and the open-source [neobrutalism.dev](https://www.neobrutalism.dev) component library (Card, Button, Badge, Input, Textarea, Table and Marquee). The components are copied into the project from the library's registry, as the library intends, and use its "Blue" theme. The calculator imports the same `src/core` engine as the server, so the browser and the API cannot disagree.
 - `src/index.js` writes structured JSON logs and shuts down gracefully on `SIGTERM`, which matters for containers.
 
@@ -136,7 +136,7 @@ The build fails if the version is not valid SemVer. This is how the release vers
 
 ### 5.4 Automated testing
 
-94 automated tests run with Vitest:
+95 automated tests run with Vitest:
 
 | Suite | Covers |
 |---|---|
@@ -230,7 +230,7 @@ Every released image stays in GHCR under its version tag, so rolling back is an 
 
 ## 6. Results
 
-All figures come from real runs of this project's pipeline between 6 and 21 October 2026. The repository is private, so the pipeline evidence is shown as GitHub CLI output and GitHub Actions log excerpts rather than screenshots of GitHub's web pages. Excerpts are filtered with `grep`, and timestamps, long URLs and image digests are shortened for readability; nothing else is changed.
+All figures come from real runs of this project's pipeline between 6 and 22 October 2026. The repository is private, so the pipeline evidence is shown as GitHub CLI output and GitHub Actions log excerpts rather than screenshots of GitHub's web pages. Excerpts are filtered with `grep`, and timestamps, long URLs and image digests are shortened for readability; nothing else is changed.
 
 ### 6.1 Version control
 
@@ -246,7 +246,7 @@ All figures come from real runs of this project's pipeline between 6 and 21 Octo
 
 ![Test and coverage results](images/fig-04-tests-coverage.png)
 
-*Figure 4: All 94 unit and API tests pass, and coverage is well above the enforced thresholds (90% lines, statements and functions; 85% branches).*
+*Figure 4: All 95 unit and API tests pass, and coverage is well above the enforced thresholds (90% lines, statements and functions; 85% branches).*
 
 ### 6.3 Continuous integration on a pull request
 
@@ -256,7 +256,7 @@ All figures come from real runs of this project's pipeline between 6 and 21 Octo
 
 ### 6.4 Automated release: v1.1.0
 
-Merging `feat(ui): rebuild the dashboard in React with neobrutalism.dev components` into `main` produced release v1.1.0 with no manual steps.
+Pushing the commit `feat(ui): rebuild the dashboard in React with neobrutalism.dev components` to `main` produced release v1.1.0 with no manual steps.
 
 ![Release workflow run](images/fig-06-release-run.png)
 
@@ -298,7 +298,8 @@ On 21 October, release v1.1.1 (an upgrade of Express to 5.3.0) gave a second ver
 
 The following were verified during development:
 
-- All 94 tests pass, with about 99% line coverage.
+- All 95 tests pass, with about 99% line coverage.
+- On 22 October, during a demo rehearsal, Aditya Baheti's commit `feat(api): add version parse endpoint` went through pull request #7, passed every check and reached production as **v1.2.0**, again with no manual steps.
 - semantic-release was run against a test repository for four successive scenarios. A `fix` commit produced **1.0.1**, a `feat` produced **1.1.0**, a `ci`-only change produced **no release**, and a breaking change produced **2.0.0**. The app's own release preview predicted the same result in every case.
 - The production container layout passed every smoke check, and the smoke test failed as expected when the deployed version did not match the expected one.
 
@@ -308,7 +309,7 @@ The following were verified during development:
 |---|---|
 | Version control using Git/GitHub | Conventional Commits, Husky hooks, PR workflow, Git tags `vX.Y.Z`, GitHub Releases |
 | Application build | Vite production bundle of the React dashboard plus stamped version metadata (`scripts/build.js` → `dist/`); release tarball and checksum |
-| Automated testing | 94 Vitest unit and API tests, coverage thresholds, Node 22/24 matrix, post-deployment smoke tests |
+| Automated testing | 95 Vitest unit and API tests, coverage thresholds, Node 22/24 matrix, post-deployment smoke tests |
 | Containerisation using Docker | Multi-stage `Dockerfile`, hardened runtime, `HEALTHCHECK`, Compose manifest, multi-arch images in GHCR |
 | CI/CD pipeline using GitHub Actions | `ci.yml`, `release.yml`, `deploy.yml` (reusable workflows, environments, concurrency) |
 | Deployment to a suitable environment | Staging (Compose on the runner) → production (Render container, optional approval gate), with rollback |
@@ -324,6 +325,7 @@ The following were verified during development:
 | `docker/build-push-action` builds the *triggering* commit by default, which does not contain the bumped version | The image job checks out the new tag and builds with `context: .` |
 | The newest changelog preset (`conventional-changelog-conventionalcommits@10`) failed at release time because it needs a newer changelog writer than semantic-release 25 ships. A dry run against a local test remote caught this. | Pinned the preset to the compatible major version (`^9`) and re-ran the full release simulation |
 | The React build uses native binaries (Rolldown, Tailwind's engine, LightningCSS), and a lockfile created on macOS might not include the Linux and Alpine builds needed by CI and Docker | Checked that `package-lock.json` lists the Linux glibc and musl builds for x64 and arm64, and tested the Docker build stage with only the files it copies |
+| A commit made in GitHub's web editor skipped the commit-message hook, so "Updated README.md" is in the history | A message with no type is ignored by the release tool, so it produced no wrong version. The team now commits locally and uses pull requests, where CI checks the message |
 | A broken release must not reach users | The quality gate runs before any version is created, staging must pass before production, and the smoke test checks the exact deployed version |
 
 ## 9. Conclusion and future scope
