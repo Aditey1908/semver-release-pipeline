@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented in this file. It is generated automatically by [semantic-release](https://github.com/semantic-release/semantic-release) from [Conventional Commits](https://www.conventionalcommits.org) — do not edit it by hand.
 
+## [1.2.0](https://github.com/Aditey1908/semver-release-pipeline/compare/v1.1.1...v1.2.0) (2026-10-22)
+
+### Features
+
+* **api:** add version parse endpoint ([e82a461](https://github.com/Aditey1908/semver-release-pipeline/commit/e82a461f43c25898b24f096f69e2677dabe24c15))
+
+### Documentation
+
+* **report:** show the rollback with the current interface ([359d212](https://github.com/Aditey1908/semver-release-pipeline/commit/359d212c8d8f9127ae5dfdc36036b06fbb211138))
+
 ## [1.1.1](https://github.com/Aditey1908/semver-release-pipeline/compare/v1.1.0...v1.1.1) (2026-10-21)
 
 ### Bug Fixes
